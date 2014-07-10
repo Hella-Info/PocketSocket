@@ -229,17 +229,24 @@
 - (CFTypeRef)copyStreamPropertyForKey:(NSString *)key {
     __block CFTypeRef result;
     [self executeWorkAndWait:^{
-        result = CFWriteStreamCopyProperty((__bridge CFWriteStreamRef)_outputStream, (__bridge CFStringRef)key);
+        if (_outputStream) {
+          result = CFWriteStreamCopyProperty((__bridge CFWriteStreamRef)_outputStream, (__bridge CFStringRef)key);
+        } else {
+          result = NULL;
+        }
     }];
     return result;
 }
+
 - (void)setStreamProperty:(CFTypeRef)property forKey:(NSString *)key {
     [self executeWorkAndWait:^{
         if(_opened || _readyState != PSWebSocketReadyStateConnecting) {
             [NSException raise:@"Invalid State" format:@"You cannot set stream properties on a PSWebSocket once it is opened."];
             return;
         }
-        CFWriteStreamSetProperty((__bridge CFWriteStreamRef)_outputStream, (__bridge CFStringRef)key, (CFTypeRef)property);
+        if (_outputStream) {
+          CFWriteStreamSetProperty((__bridge CFWriteStreamRef)_outputStream, (__bridge CFStringRef)key, (CFTypeRef)property);
+        }
     }];
 }
 
