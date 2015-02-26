@@ -64,7 +64,6 @@ typedef NS_ENUM(NSInteger, PSWebSocketServerConnectionReadyState) {
 void PSWebSocketServerAcceptCallback(CFSocketRef s, CFSocketCallBackType type, CFDataRef address, const void *data, void *info);
 
 @interface PSWebSocketServer() <NSStreamDelegate, PSWebSocketDelegate> {
-    PSWebSocketNetworkThread *_networkThread;
     dispatch_queue_t _workQueue;
     
     NSArray *_SSLCertificates;
@@ -88,10 +87,7 @@ void PSWebSocketServerAcceptCallback(CFSocketRef s, CFSocketCallBackType type, C
 #pragma mark - Properties
 
 - (NSRunLoop *)runLoop {
-    if(!_networkThread) {
-        _networkThread = [[PSWebSocketNetworkThread alloc] init];
-    }
-    return _networkThread.runLoop;
+    return [[PSWebSocketNetworkThread sharedNetworkThread] runLoop];
 }
 
 #pragma mark - Initialization
@@ -105,7 +101,6 @@ void PSWebSocketServerAcceptCallback(CFSocketRef s, CFSocketCallBackType type, C
 - (instancetype)initWithHost:(NSString *)host port:(NSUInteger)port SSLCertificates:(NSArray *)SSLCertificates {
     NSParameterAssert(port);
     if((self = [super init])) {
-        _networkThread = [[PSWebSocketNetworkThread alloc] init];
         _workQueue = dispatch_queue_create(nil, nil);
         
         // copy SSL certificates
@@ -186,7 +181,6 @@ void PSWebSocketServerAcceptCallback(CFSocketRef s, CFSocketCallBackType type, C
     
     CFRunLoopRef runLoop = [[self runLoop] getCFRunLoop];
     CFRunLoopAddSource(runLoop, _socketRunLoopSource, kCFRunLoopDefaultMode);
-    CFRelease(runLoop);
     
     _running = YES;
     
@@ -219,7 +213,6 @@ void PSWebSocketServerAcceptCallback(CFSocketRef s, CFSocketCallBackType type, C
     if(_socketRunLoopSource) {
         CFRunLoopRef runLoop = [[self runLoop] getCFRunLoop];
         CFRunLoopRemoveSource(runLoop, _socketRunLoopSource, kCFRunLoopDefaultMode);
-        CFRelease(runLoop);
         CFRelease(_socketRunLoopSource);
         _socketRunLoopSource = nil;
     }
