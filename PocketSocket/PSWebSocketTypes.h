@@ -23,7 +23,8 @@ typedef NS_ENUM(NSInteger, PSWebSocketErrorCodes) {
     PSWebSocketErrorCodeUnknown = 0,
     PSWebSocketErrorCodeTimedOut,
     PSWebSocketErrorCodeHandshakeFailed,
-    PSWebSocketErrorCodeConnectionFailed
+    PSWebSocketErrorCodeConnectionFailed,
+    PSWebSocketErrorCodeInvalidCertificate
 };
 
 typedef NS_ENUM(NSInteger, PSWebSocketStatusCode) {
