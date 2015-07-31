@@ -358,10 +358,12 @@ typedef NS_ENUM(NSInteger, PSWebSocketDriverState) {
         headerBytes[1] |= 126;
         uint16_t len = EndianU16_BtoN((uint16_t)[payload length]);
         [header appendBytes:&len length:sizeof(len)];
+        headerBytes = header.mutableBytes;
     } else {
         headerBytes[1] |= 127;
         uint64_t len = EndianU64_BtoN((uint64_t)[payload length]);
         [header appendBytes:&len length:sizeof(len)];
+        headerBytes = header.mutableBytes;
     }
     
     // set masking data
@@ -371,6 +373,7 @@ typedef NS_ENUM(NSInteger, PSWebSocketDriverState) {
         uint8_t maskKey[4];
         SecRandomCopyBytes(kSecRandomDefault, sizeof(maskKey), maskKey);
         [header appendBytes:maskKey length:sizeof(maskKey)];
+        headerBytes = header.mutableBytes;
         
         // make copy if not already mutable
         if(![payload isKindOfClass:[NSMutableData class]]) {
