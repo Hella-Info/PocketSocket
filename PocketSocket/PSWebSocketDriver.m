@@ -373,7 +373,6 @@ typedef NS_ENUM(NSInteger, PSWebSocketDriverState) {
         uint8_t maskKey[4];
         SecRandomCopyBytes(kSecRandomDefault, sizeof(maskKey), maskKey);
         [header appendBytes:maskKey length:sizeof(maskKey)];
-        headerBytes = header.mutableBytes;
         
         // make copy if not already mutable
         if(![payload isKindOfClass:[NSMutableData class]]) {
