@@ -141,3 +141,21 @@ typedef NS_ENUM(NSInteger, PSWebSocketReadyState) {
 - (void)setStreamProperty:(CFTypeRef)property forKey:(NSString *)key;
 
 @end
+
+/**
+ *  NSURLRequest
+ */
+@interface NSURLRequest (PinnedCertificates)
+
+@property (nonatomic, copy, readonly) NSArray *ps_pinnedCertificates;
+
+@end
+
+/**
+ *  NSMutableURLRequest
+ */
+@interface NSMutableURLRequest (PinnedCertificates)
+
+@property (nonatomic, copy) NSArray *ps_pinnedCertificates;
+
+@end

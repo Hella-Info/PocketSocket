@@ -35,6 +35,7 @@
     BOOL _failed;
     BOOL _pumpingInput;
     BOOL _pumpingOutput;
+    BOOL _pinnedCertificateValidated;
     NSInteger _closeCode;
     NSString *_closeReason;
     NSMutableArray *_pingHandlers;
@@ -129,12 +130,16 @@
             
             opts[(__bridge id)kCFStreamSSLLevel] = (__bridge id)kCFStreamSocketSecurityLevelNegotiatedSSL;
             
-            // @TODO PINNED SSL
+            if ([request ps_pinnedCertificates].count != 0) {
+                opts[(__bridge id)kCFStreamSSLValidatesCertificateChain] = @NO;
+            }
             
 #if DEBUG
+            _pinnedCertificateValidated = YES;
             opts[(__bridge id)kCFStreamSSLValidatesCertificateChain] = @NO;
             NSLog(@"PSWebSocket: debug mode allowing all SSL certificates");
 #endif
+
             [_outputStream setProperty:opts forKey:(__bridge id)kCFStreamPropertySSLSettings];
         }
 	}
@@ -484,7 +489,37 @@
 #pragma mark - NSStreamDelegate
 
 - (void)stream:(NSStream *)stream handleEvent:(NSStreamEvent)event {
-    // @TODO HANDLE PINNED SSL CERTIFICATES
+    if (_secure && !_pinnedCertificateValidated && (event == NSStreamEventHasBytesAvailable || event == NSStreamEventHasSpaceAvailable)) {
+        NSArray *pinnedCertificates = [_request ps_pinnedCertificates];
+
+        if (pinnedCertificates) {
+            SecTrustRef secTrust = (__bridge SecTrustRef)[stream propertyForKey:(__bridge id)kCFStreamPropertySSLPeerTrust];
+
+            if (secTrust) {
+                NSInteger certificateCount = SecTrustGetCertificateCount(secTrust);
+
+                for (NSInteger i = 0; i < certificateCount && !_pinnedCertificateValidated; ++i) {
+                    SecCertificateRef certificate = SecTrustGetCertificateAtIndex(secTrust, i);
+                    NSData *certificateData = CFBridgingRelease(SecCertificateCopyData(certificate));
+
+                    for (NSData *localCertificateData in pinnedCertificates) {
+                        if ([localCertificateData isEqualToData:certificateData]) {
+                            _pinnedCertificateValidated = YES;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!_pinnedCertificateValidated) {
+                NSString *reason = @"Pinned SSL certificate could not be validated";
+                NSError *error = [NSError errorWithDomain:PSWebSocketErrorDomain code:PSWebSocketErrorCodeInvalidCertificate userInfo:@{NSLocalizedDescriptionKey: reason}];
+                [self failWithError:error];
+                return;
+            }
+        }
+    }
+
     [self executeWork:^{
         switch(event) {
             case NSStreamEventOpenCompleted: {
@@ -579,9 +614,30 @@
 #pragma mark - Dealloc
 
 - (void)dealloc {
-    dispatch_barrier_sync(_workQueue, ^{
-        [self disconnect];
-    });
+    [self disconnect];
+}
+
+@end
+
+@implementation  NSURLRequest (CertificateAdditions)
+
+- (NSArray *)ps_pinnedCertificates;
+{
+    return [NSURLProtocol propertyForKey:@"ps_pinnedCertificates" inRequest:self];
+}
+
+@end
+
+@implementation  NSMutableURLRequest (CertificateAdditions)
+
+- (NSArray *)ps_pinnedCertificates;
+{
+    return [NSURLProtocol propertyForKey:@"ps_pinnedCertificates" inRequest:self];
+}
+
+- (void)setPs_pinnedCertificates:(NSArray *)ps_pinnedCertificates;
+{
+    [NSURLProtocol setProperty:ps_pinnedCertificates forKey:@"ps_pinnedCertificates" inRequest:self];
 }
 
 @end
